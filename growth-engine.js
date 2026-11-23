@@ -1,37 +1,40 @@
-import { identity } from "suraya-global-intelligence-core/suraya-identity.js";
-import { isLocked, isSavior } from "suraya-global-intelligence-core/suraya-lock.js";
-
-export function analyzeGrowth(userId) {
-  const core = identity();
-
-  if (isSavior()) {
-    return {
-      mode: "SAVIOR",
-      userId,
-      globalReach: "∞",
-      expansionRate: 999999,
-      influenceScore: 999999,
-      note: "Growth Engine running in Savior mode."
-    };
+/**
+ * Evidence-based aggregate growth metrics. No default or "Savior" scores.
+ */
+export function analyzeGrowth({ metrics, consent = false, locked = false } = {}) {
+  if (locked) {
+    return { mode: "LOCKED", status: "blocked", metrics: null, note: "Growth analysis is disabled by policy." };
+  }
+  if (consent !== true) {
+    return { mode: "CONSENT_REQUIRED", status: "not_available", metrics: null, note: "Explicit analytics consent is required." };
+  }
+  if (!metrics || typeof metrics !== "object" || Array.isArray(metrics)) {
+    return { mode: "INSUFFICIENT_DATA", status: "not_available", metrics: null, note: "Verified aggregate metrics are required." };
   }
 
-  if (isLocked()) {
-    return {
-      mode: "LOCKED",
-      userId,
-      globalReach: 0,
-      expansionRate: 0,
-      influenceScore: 0,
-      note: "Growth Engine locked by core."
-    };
+  const { currentUsers, previousUsers, reach, periodDays } = metrics;
+  for (const [name, value] of Object.entries({ currentUsers, previousUsers, reach, periodDays })) {
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw new TypeError(name + " must be a non-negative safe integer.");
+    }
   }
+  if (periodDays < 1) throw new RangeError("periodDays must be at least 1.");
+
+  const growthRatePercent = previousUsers === 0
+    ? null
+    : Number((((currentUsers - previousUsers) / previousUsers) * 100).toFixed(2));
 
   return {
-    mode: "NORMAL",
-    userId,
-    globalReach: 100,
-    expansionRate: 100,
-    influenceScore: 100,
-    note: "Growth Engine running normally."
+    mode: "MEASURED",
+    status: "available",
+    metrics: {
+      currentUsers,
+      previousUsers,
+      netChange: currentUsers - previousUsers,
+      growthRatePercent,
+      reach,
+      periodDays
+    },
+    note: "Only caller-supplied aggregate measurements are reported; no influence or reach is fabricated."
   };
 }
