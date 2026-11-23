@@ -1,0 +1,8 @@
+{
+  "name": "suraya-growth-engine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test", "check": "node --check growth-engine.js && node --test" }
+}
